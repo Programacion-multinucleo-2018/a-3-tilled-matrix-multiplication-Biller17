@@ -136,8 +136,8 @@ int main(int argc, char **argv)
     // set up data size of matrix
     // int nx = 1 << 12;
     // int ny = 1 << 12;
-    int nx = 4000;
-    int ny = 4000;
+    int nx = 2000;
+    int ny = 2000;
 
     int nxy = nx * ny;
     int nBytes = nxy * sizeof(int);
@@ -187,22 +187,22 @@ int main(int argc, char **argv)
     dim3 block(dimx, dimy);
     dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
 
-    // start_cpu =  chrono::high_resolution_clock::now();
-    // multMatrixOnGPU2D<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
-    // SAFE_CALL(cudaDeviceSynchronize(), "Error executing kernel");
-    // end_cpu =  chrono::high_resolution_clock::now();
-    //
-    // duration_ms = end_cpu - start_cpu;
-    //
-    // printf("sumMatrixOnGPU1D <<<(%d,%d), (%d,%d)>>> elapsed %f ms\n", grid.x,
-    //        grid.y,
-    //        block.x, block.y, duration_ms.count());
-    //
-    // // SAFE_CALL kernel error
-    // SAFE_CALL(cudaGetLastError(), "Error with last error");
-    //
-    // // copy kernel result back to host side
-    // SAFE_CALL(cudaMemcpy(gpuRef, d_MatC, nBytes, cudaMemcpyDeviceToHost), "Error copying d_MatC");
+    start_cpu =  chrono::high_resolution_clock::now();
+    multMatrixOnGPU2D<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
+    SAFE_CALL(cudaDeviceSynchronize(), "Error executing kernel");
+    end_cpu =  chrono::high_resolution_clock::now();
+
+    duration_ms = end_cpu - start_cpu;
+
+    printf("sumMatrixOnGPU1D <<<(%d,%d), (%d,%d)>>> elapsed %f ms\n", grid.x,
+           grid.y,
+           block.x, block.y, duration_ms.count());
+
+    // SAFE_CALL kernel error
+    SAFE_CALL(cudaGetLastError(), "Error with last error");
+
+    // copy kernel result back to host side
+    SAFE_CALL(cudaMemcpy(gpuRef, d_MatC, nBytes, cudaMemcpyDeviceToHost), "Error copying d_MatC");
 
     // printArray(hostRef, nx);
     // printf("Host\n");
@@ -212,10 +212,6 @@ int main(int argc, char **argv)
     // checkResult(hostRef, gpuRef, nxy);
 
 
-    // dimx = TILEDIM;
-    // dimy = TILEDIM;
-    // dim3 block(dimx, dimy);
-    // dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
     //calculating matrix multiplication using Tiling
     start_cpu =  chrono::high_resolution_clock::now();
     tiledMult<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
@@ -224,9 +220,7 @@ int main(int argc, char **argv)
 
     duration_ms = end_cpu - start_cpu;
 
-    printf("Matrix multiplication with tiling <<<(%d,%d), (%d,%d)>>> elapsed %f ms\n", grid.x,
-           grid.y,
-           block.x, block.y, duration_ms.count());
+    printf("Matrix multiplication with tiling <<<(%d,%d), (%d,%d)>>> elapsed %f ms\n", grid.x, grid.y, block.x, block.y, duration_ms.count());
 
 
     // SAFE_CALL kernel error
