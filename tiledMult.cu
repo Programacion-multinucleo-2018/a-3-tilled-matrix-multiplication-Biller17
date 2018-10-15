@@ -5,7 +5,7 @@
 
 using namespace std;
 
-#define TILEDIM 8
+#define TILEDIM 32
 
 
 //Code used from examples and modified for activity
@@ -85,8 +85,7 @@ void checkResult(int *hostRef, int *gpuRef, const int N)
 
 
 //matrix calculation using cpu
-__global__ void multMatrixOnGPU2D(int *MatA, int *MatB, int *MatC, int nx,
-    int ny)
+__global__ void multMatrixOnGPU2D(int *MatA, int *MatB, int *MatC, int nx, int ny)
 {
     unsigned int ix = threadIdx.x + blockIdx.x * blockDim.x;
     unsigned int iy = threadIdx.y + blockIdx.y * blockDim.y;
@@ -110,14 +109,30 @@ __global__ void tiledMult(int *MatA, int *MatB, int *MatC, int nx, int ny)
     __shared__ float sharedMatA[TILEDIM][TILEDIM];
     __shared__ float sharedMatB[TILEDIM][TILEDIM];
 
-    printf("%d\n", blockDim.x);
-    printf("%d\n", TILEDIM);
-    // for(int i = 0; i < DIM; i ++) {
-    //   for(int j = 0; j < DIM; j++) {
-    //     sharedMatA[i][j] = 0;
-    //     sharedMatB[i][j] = 0;
-    //   }
-    // }
+  
+    int ty = threadIdx.y
+    int tx = threadIdx.x
+
+    //vamos a traves de todos los tiles
+    for(int i = (TILEDIM + nx - 1)/DIM; i >= 0; i--) {
+      if((i * TILEDIM + threadIdx.x) < nx && (iy < ny)) {
+        sharedMatA[ty][tx] = A[(iy*ny) + (i*TILEDIM+tx)];
+      }
+
+      if((i * DIM + threadIdx.y) < ny && (ix < nx)) {
+        sharedMatB[ty][tx] = B[(i*TILEDIM+ty) * nx + ix];
+      }
+
+      __syncthreads();
+      for(int j = 0; j < TILEDIM; j++) {
+        sum += matTempA[ty][j] * matTempB[j][tx];
+      }
+      __syncthreads();
+    }
+
+    if(ix < nx && iy < ny) {
+      C[iy*ny+ix] = sum;
+    }
 }
 
 
