@@ -5,6 +5,7 @@
 
 using namespace std;
 
+#define TILEDIM 8
 
 
 //Code used from examples and modified for activity
@@ -99,20 +100,24 @@ __global__ void multMatrixOnGPU2D(int *MatA, int *MatB, int *MatC, int nx,
     }
 }
 
-//matrix calculation using cpu
-__global__ void tiledMult(int *MatA, int *MatB, int *MatC, int nx,
-    int ny)
+//matrix calculation using tile method
+__global__ void tiledMult(int *MatA, int *MatB, int *MatC, int nx, int ny)
 {
     unsigned int ix = threadIdx.x + blockIdx.x * blockDim.x;
     unsigned int iy = threadIdx.y + blockIdx.y * blockDim.y;
-    unsigned int idx = iy * nx + ix;
+    // unsigned int idx = iy * nx + ix;
 
+    __shared__ float sharedMatA[TILEDIM][TILEDIM];
+    __shared__ float sharedMatB[TILEDIM][TILEDIM];
 
-    if (ix < nx && iy < ny){
-        for(int k = 0; k < nx; k++){
-          MatC[ix * nx + iy] += MatA[ix * nx + k] * MatB[k * nx + iy];
-        }
-    }
+    printf("%d\n", blockDim.x);
+    printf("%d\n", TILEDIM);
+    // for(int i = 0; i < DIM; i ++) {
+    //   for(int j = 0; j < DIM; j++) {
+    //     sharedMatA[i][j] = 0;
+    //     sharedMatB[i][j] = 0;
+    //   }
+    // }
 }
 
 
@@ -204,10 +209,13 @@ int main(int argc, char **argv)
     // printArray(gpuRef, nx);
     // printf("GPU\n");
     // // check device results
-    checkResult(hostRef, gpuRef, nxy);
+    // checkResult(hostRef, gpuRef, nxy);
 
 
-
+    int dimx = TILEDIM;
+    int dimy = TILEDIM;
+    dim3 block(dimx, dimy);
+    dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
     //calculating matrix multiplication using Tiling
     start_cpu =  chrono::high_resolution_clock::now();
     tiledMult<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
