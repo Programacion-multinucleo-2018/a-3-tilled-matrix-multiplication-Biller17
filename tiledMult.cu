@@ -182,8 +182,8 @@ int main(int argc, char **argv)
     SAFE_CALL(cudaMemset(d_MatC, 0, nBytes), "Error setting d_MatC to zeros");
 
     // invoke kernel at host side
-    int dimx = 32;
-    int dimy = 32;
+    int dimx = TILEDIM;
+    int dimy = TILEDIM;
     dim3 block(dimx, dimy);
     dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
 
@@ -212,10 +212,10 @@ int main(int argc, char **argv)
     // checkResult(hostRef, gpuRef, nxy);
 
 
-    dimx = TILEDIM;
-    dimy = TILEDIM;
-    dim3 block(dimx, dimy);
-    dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
+    // dimx = TILEDIM;
+    // dimy = TILEDIM;
+    // dim3 block(dimx, dimy);
+    // dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
     //calculating matrix multiplication using Tiling
     start_cpu =  chrono::high_resolution_clock::now();
     tiledMult<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
