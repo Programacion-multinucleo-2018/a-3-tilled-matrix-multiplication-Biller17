@@ -212,8 +212,8 @@ int main(int argc, char **argv)
     // checkResult(hostRef, gpuRef, nxy);
 
 
-    int dimx = TILEDIM;
-    int dimy = TILEDIM;
+    dimx = TILEDIM;
+    dimy = TILEDIM;
     dim3 block(dimx, dimy);
     dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
     //calculating matrix multiplication using Tiling
