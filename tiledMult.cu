@@ -22,7 +22,7 @@ void initialData(int *ip, const int size)
 
     for(i = 0; i < size; i++)
     {
-        ip[i] = i+1;
+        ip[i] = static_cast <float> (rand()) / (static_cast <float> (RAND_MAX/10));
     }
 
     return;
@@ -99,6 +99,21 @@ __global__ void multMatrixOnGPU2D(int *MatA, int *MatB, int *MatC, int nx,
     }
 }
 
+//matrix calculation using cpu
+__global__ void tiledMult(int *MatA, int *MatB, int *MatC, int nx,
+    int ny)
+{
+    unsigned int ix = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int iy = threadIdx.y + blockIdx.y * blockDim.y;
+    unsigned int idx = iy * nx + ix;
+
+
+    if (ix < nx && iy < ny){
+        for(int k = 0; k < nx; k++){
+          MatC[ix * nx + iy] += MatA[ix * nx + k] * MatB[k * nx + iy];
+        }
+    }
+}
 
 
 
@@ -144,7 +159,7 @@ int main(int argc, char **argv)
 
     // add matrix at host side for result SAFE_CALLs
     auto start_cpu =  chrono::high_resolution_clock::now();
-    // multiplyMatrixOnHost(h_A, h_B, hostRef, nx, ny);
+    multiplyMatrixOnHost(h_A, h_B, hostRef, nx, ny);
     auto end_cpu =  chrono::high_resolution_clock::now();
     chrono::duration<float, std::milli> duration_ms = end_cpu - start_cpu;
 
@@ -189,7 +204,34 @@ int main(int argc, char **argv)
     // printArray(gpuRef, nx);
     // printf("GPU\n");
     // // check device results
-    // checkResult(hostRef, gpuRef, nxy);
+    checkResult(hostRef, gpuRef, nxy);
+
+
+
+    //calculating matrix multiplication using Tiling
+    start_cpu =  chrono::high_resolution_clock::now();
+    tiledMult<<<grid, block>>>(d_MatA, d_MatB, d_MatC, nx, ny);
+    SAFE_CALL(cudaDeviceSynchronize(), "Error executing kernel");
+    end_cpu =  chrono::high_resolution_clock::now();
+
+    duration_ms = end_cpu - start_cpu;
+
+    printf("Matrix multiplication with tiling <<<(%d,%d), (%d,%d)>>> elapsed %f ms\n", grid.x,
+           grid.y,
+           block.x, block.y, duration_ms.count());
+
+
+    // SAFE_CALL kernel error
+    SAFE_CALL(cudaGetLastError(), "Error with last error");
+
+    // copy kernel result back to host side
+    SAFE_CALL(cudaMemcpy(gpuRef, d_MatC, nBytes, cudaMemcpyDeviceToHost), "Error copying d_MatC");
+
+
+    checkResult(hostRef, gpuRef, nxy);
+
+
+
 
     // free device global memory
     SAFE_CALL(cudaFree(d_MatA), "Error freeing memory");
