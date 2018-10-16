@@ -18,3 +18,16 @@ Rubric:
 3. GPU code is initialized correctly, and the device memory is deallocated.
 4. Implement matrix multiplication using shared memory and tiling.
 5. Report the average processing time and speedup for the different tile sizes.
+
+EDIT:
+
+The program was tested and the runtimes are:
+
+GPU2D runtime = 3.7515 seconds
+
+
+8x8: 0.1475 seconds
+
+16x16: 0.082 seconds
+
+32x32: 0.086 seconds

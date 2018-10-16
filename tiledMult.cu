@@ -17,15 +17,14 @@ using namespace std;
 
 
 //inicialization of matrices
-void initialData(int *ip, const int size)
+void initialData(float *ip, const int size)
 {
     int i;
 
     for(i = 0; i < size; i++)
     {
-        ip[i] = static_cast <float> (rand()) / (static_cast <float> (RAND_MAX/10));
+      ip[i] = (rand() / (float)RAND_MAX * 10.0f);
     }
-
     return;
 }
 
@@ -59,33 +58,33 @@ void multiplyMatrixOnHost(int *A, int *B, int *C, const int nx,
     return;
 }
 
-//checking result of gpu and comparing them with cpu matrix
-void checkResult(int *hostRef, int *gpuRef, const int N)
-{
-    double epsilon = 1.0E-8;
-    bool match = 1;
-
-    for (int i = 0; i < N; i++)
-    {
-        if (abs(hostRef[i] - gpuRef[i]) > epsilon)
-        {
-            match = 0;
-            printf("host %f gpu %f\n", hostRef[i], gpuRef[i]);
-            break;
-        }
-    }
-
-    if (match)
-        printf("Arrays match.\n\n");
-    else
-        printf("Arrays do not match.\n\n");
-}
-
-
+// //checking result of gpu and comparing them with cpu matrix
+// void checkResult(int *hostRef, int *gpuRef, const int N)
+// {
+//     double epsilon = 1.0E-8;
+//     bool match = 1;
+//
+//     for (int i = 0; i < N; i++)
+//     {
+//         if (abs(hostRef[i] - gpuRef[i]) > epsilon)
+//         {
+//             match = 0;
+//             printf("host %f gpu %f\n", hostRef[i], gpuRef[i]);
+//             break;
+//         }
+//     }
+//
+//     if (match)
+//         printf("Arrays match.\n\n");
+//     else
+//         printf("Arrays do not match.\n\n");
+// }
+//
+//
 
 
 //matrix calculation using cpu
-__global__ void multMatrixOnGPU2D(int *MatA, int *MatB, int *MatC, int nx, int ny)
+__global__ void multMatrixOnGPU2D(float *MatA, float *MatB, float *MatC, int nx, int ny)
 {
     unsigned int ix = threadIdx.x + blockIdx.x * blockDim.x;
     unsigned int iy = threadIdx.y + blockIdx.y * blockDim.y;
@@ -100,7 +99,7 @@ __global__ void multMatrixOnGPU2D(int *MatA, int *MatB, int *MatC, int nx, int n
 }
 
 //matrix calculation using tile method
-__global__ void tiledMult(int *MatA, int *MatB, int *MatC, int nx, int ny)
+__global__ void tiledMult(float *MatA, float *MatB, float *MatC, int nx, int ny)
 {
     unsigned int ix = threadIdx.x + blockIdx.x * blockDim.x;
     unsigned int iy = threadIdx.y + blockIdx.y * blockDim.y;
@@ -109,11 +108,10 @@ __global__ void tiledMult(int *MatA, int *MatB, int *MatC, int nx, int ny)
     __shared__ float sharedMatA[TILEDIM][TILEDIM];
     __shared__ float sharedMatB[TILEDIM][TILEDIM];
 
+    float sum = 0;
+    int ty = threadIdx.y;
+    int tx = threadIdx.x;
 
-    int ty = threadIdx.y
-    int tx = threadIdx.x
-
-    //vamos a traves de todos los tiles
     for(int i = (TILEDIM + nx - 1)/TILEDIM; i >= 0; i--) {
       if((i * TILEDIM + threadIdx.x) < nx && (iy < ny)) {
         sharedMatA[ty][tx] = A[(iy*ny) + (i*TILEDIM+tx)];
@@ -125,7 +123,7 @@ __global__ void tiledMult(int *MatA, int *MatB, int *MatC, int nx, int ny)
 
       __syncthreads();
       for(int j = 0; j < TILEDIM; j++) {
-        sum += matTempA[ty][j] * matTempB[j][tx];
+        sum += sharedMatA[ty][j] * sharedMatB[j][tx];
       }
       __syncthreads();
     }
@@ -155,15 +153,15 @@ int main(int argc, char **argv)
     int ny = 2000;
 
     int nxy = nx * ny;
-    int nBytes = nxy * sizeof(int);
+    int nBytes = nxy * sizeof(float);
     printf("Matrix size: nx %d ny %d\n", nx, ny);
 
     // malloc host memory
-    int *h_A, *h_B, *hostRef, *gpuRef;
-    h_A = (int *)malloc(nBytes);
-    h_B = (int *)malloc(nBytes);
-    hostRef = (int *)malloc(nBytes);
-    gpuRef = (int *)malloc(nBytes);
+    float *h_A, *h_B, *hostRef, *gpuRef;
+    h_A = (float *)malloc(nBytes);
+    h_B = (float *)malloc(nBytes);
+    hostRef = (float *)malloc(nBytes);
+    gpuRef = (float *)malloc(nBytes);
 
     // initialize data at host side
 
@@ -209,7 +207,7 @@ int main(int argc, char **argv)
 
     duration_ms = end_cpu - start_cpu;
 
-    printf("sumMatrixOnGPU1D <<<(%d,%d), (%d,%d)>>> elapsed %f ms\n", grid.x,
+    printf("multMatrixOnGPU2D <<<(%d,%d), (%d,%d)>>> elapsed %f ms\n", grid.x,
            grid.y,
            block.x, block.y, duration_ms.count());
 
@@ -244,8 +242,8 @@ int main(int argc, char **argv)
     // copy kernel result back to host side
     SAFE_CALL(cudaMemcpy(gpuRef, d_MatC, nBytes, cudaMemcpyDeviceToHost), "Error copying d_MatC");
 
-
-    checkResult(hostRef, gpuRef, nxy);
+    //
+    // checkResult(hostRef, gpuRef, nxy);
 
 
 
@@ -262,7 +260,7 @@ int main(int argc, char **argv)
     free(gpuRef);
 
     // reset device
-    SAFE_CALL(cudaDeviceReset(), "Error reseting");
+    SAFE_CALL(cudaDeviceReset(), "Error resetting");
 
     return (0);
 }
