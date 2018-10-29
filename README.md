@@ -25,9 +25,14 @@ The program was tested and the runtimes are:
 
 GPU2D runtime = 3.7515 seconds
 
-
 8x8:  0.1475 seconds
 
 16x16: 0.082 seconds
 
 32x32: 0.086 seconds
+
+**NOTES**
+
+1. Does not compile.
+
+**Grade: 0**
